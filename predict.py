@@ -28,7 +28,26 @@ def predict(args):
     # Load model
     disable_torch_init()
     model_name = get_model_name_from_path(model_path)
-    tokenizer, model, image_processor, context_len = load_pretrained_model(model_path, args.model_base, model_name, device="mps")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    torch.cuda.set_device(device)
+    tokenizer, model, image_processor, context_len = load_pretrained_model(model_path, args.model_base, model_name, device = device)
+
+    # check model info
+    # check model datatype
+    # for name, param in model.named_parameters():
+    #     print(name, param.dtype)
+    # for name, module in model.named_modules():
+    #     print(name, type(module))
+    
+    def check_quantization(model):
+        for name, module in model.named_modules():
+            if 'quant' in str(type(module)).lower():
+                print(f"{name}: {type(module)} [Quantized]")
+            elif 'bitsandbytes' in str(type(module)).lower():
+                print(f"{name}: {type(module)} [BitsAndBytes]")
+            else:
+                continue
+    check_quantization(model)
 
     # Construct prompt
     qs = args.prompt
@@ -45,14 +64,16 @@ def predict(args):
     model.generation_config.pad_token_id = tokenizer.pad_token_id
 
     # Tokenize prompt
-    input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(torch.device("mps"))
+    input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(device)
 
     # Load and preprocess image
     image = Image.open(args.image_file).convert('RGB')
-    image_tensor = process_images([image], image_processor, model.config)[0]
+    image_tensor = process_images([image], image_processor, model.config)[0].to(device)
 
     # Run inference
     with torch.inference_mode():
+        print("Model on:", next(model.parameters()).device)
+        print("Input on:", image_tensor.device)
         output_ids = model.generate(
             input_ids,
             images=image_tensor.unsqueeze(0).half(),
