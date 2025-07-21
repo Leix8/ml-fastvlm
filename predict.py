@@ -32,6 +32,9 @@ def predict(args):
     torch.cuda.set_device(device)
     tokenizer, model, image_processor, context_len = load_pretrained_model(model_path, args.model_base, model_name, device = device)
 
+    print(f"check image_processor.size: {image_processor.size}")
+    print(f"check image_processpr.crop_size(): {image_processor.crop_size}")
+
     # check model info
     # check model datatype
     # for name, param in model.named_parameters():
