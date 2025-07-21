@@ -4,6 +4,7 @@ import os
 from llava.model.builder import load_pretrained_model
 from llava.mm_utils import get_model_name_from_path
 from llava.utils import disable_torch_init
+import onnx 
 
 # load FastVLM model
 def load_fastvlm_model(raw_path: str):
@@ -42,8 +43,10 @@ def save_model(encoder, save_dir = "vision_encoder", model_name = "fastvithd", s
     print(f"Pytorch weights saved to {save_dir}/{pytorch_encoder_name}")
 
     if save_onnx:
+        dtype = next(encoder.parameters()).dtype
+        device = next(encoder.parameters()).device
         # llava-fastvithd_0.5b_stage3: image_processor.crop_size = (1024, 1024)
-        dummy_input = torch.randn(1, 3, 1024, 1024)
+        dummy_input = torch.randn(1, 3, 1024, 1024, dtype=dtype).to(device)
         onnx_encoder_name = model_name + "_encoder.onnx"
         onnx_path = f"{save_dir}/{onnx_encoder_name}"
         torch.onnx.export(
