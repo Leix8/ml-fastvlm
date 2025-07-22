@@ -45,48 +45,46 @@ def caption_directory(args):
     conv_template.append_message(conv_template.roles[0], qs)
     conv_template.append_message(conv_template.roles[1], None)
     prompt = conv_template.get_prompt()
-
     input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(device)
 
-    # Enumerate image files
+    # Enumerate image files recursively
     results = []
-    image_dir = os.path.expanduser(args.image_dir)
-    image_files = sorted(f for f in os.listdir(image_dir) if is_image_file(f))
+    image_dir = os.path.abspath(os.path.expanduser(args.image_dir))
+    for root, _, files in os.walk(image_dir):
+        for file in files:
+            if is_image_file(file):
+                image_path = os.path.join(root, file).strip("'\"")
+                try:
+                    image = Image.open(image_path).convert('RGB')
+                except Exception as e:
+                    print(f"❌ Skipping {image_path}: {e}")
+                    continue
 
-    for image_name in image_files:
-        image_name = image_name.strip("'\"")  # Remove surrounding quotes if any
-        image_path = os.path.join(image_dir, image_name)
+                try:
+                    image_tensor = process_images([image], image_processor, model.config)[0].to(device)
 
-        try:
-            image = Image.open(image_path).convert('RGB')
-        except Exception as e:
-            print(f"❌ Skipping {image_name}: {e}")
-            continue
+                    with torch.inference_mode():
+                        output_ids = model.generate(
+                            input_ids,
+                            images=image_tensor.unsqueeze(0).half(),
+                            image_sizes=[image.size],
+                            do_sample=True if args.temperature > 0 else False,
+                            temperature=args.temperature,
+                            top_p=args.top_p,
+                            num_beams=args.num_beams,
+                            max_new_tokens=256,
+                            use_cache=True
+                        )
+                        output_text = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
+                        rel_path = os.path.relpath(image_path, start=os.getcwd())
+                        print(f"[✓] {rel_path}: {output_text}")
+                        results.append({
+                            "image_path": rel_path,
+                            "caption": output_text
+                        })
 
-        try:
-            image_tensor = process_images([image], image_processor, model.config)[0].to(device)
-
-            with torch.inference_mode():
-                output_ids = model.generate(
-                    input_ids,
-                    images=image_tensor.unsqueeze(0).half(),
-                    image_sizes=[image.size],
-                    do_sample=True if args.temperature > 0 else False,
-                    temperature=args.temperature,
-                    top_p=args.top_p,
-                    num_beams=args.num_beams,
-                    max_new_tokens=256,
-                    use_cache=True
-                )
-                output_text = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
-                print(f"[✓] {image_name}: {output_text}")
-                results.append({
-                    "image_path": image_path,
-                    "caption": output_text
-                })
-
-        except Exception as e:
-            print(f"❌ Failed to process {image_name}: {e}")
+                except Exception as e:
+                    print(f"❌ Failed to process {image_path}: {e}")
 
     # Save results
     with open(args.output_json, "w") as f:
@@ -101,7 +99,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-path", type=str, required=True)
     parser.add_argument("--model-base", type=str, default=None)
-    parser.add_argument("--image-dir", type=str, required=True, help="Directory containing images")
+    parser.add_argument("--image-dir", type=str, required=True, help="Directory containing images (including subfolders)")
     parser.add_argument("--prompt", type=str, required=True, help="Prompt to use for captioning")
     parser.add_argument("--output-json", type=str, default="captions.json", help="Path to save captions")
     parser.add_argument("--conv-mode", type=str, default="qwen_2")
