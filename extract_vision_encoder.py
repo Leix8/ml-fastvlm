@@ -77,7 +77,7 @@ if __name__ == "__main__":
     model = load_fastvlm_model(args.model_path)
     # print(f"check vision tower: {dir(model.get_vision_tower()), model.get_vision_tower().input_image_size}")
     vision_encoder = model.get_vision_tower().vision_tower
-    print(f"check type of vision_encoder: {type(vision_encoder)}")
+    # print(f"check type of vision_encoder: {type(vision_encoder)}")
     encoder_wrapper = VisionEncoderWrapper(vision_encoder)
 
     save_model(encoder_wrapper, save_dir = save_dir, model_name = model_name, save_onnx = args.save_onnx)

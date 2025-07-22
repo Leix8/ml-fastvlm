@@ -143,3 +143,4 @@ app/FastVLM/model
 checkpoints
 data
 vision_encoder
+results
