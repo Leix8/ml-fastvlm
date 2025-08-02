@@ -29,9 +29,26 @@ def convert_and_resize_image(image_path, temp_dir):
         return None
 
 
-def generate_html(json_file, image_root, output_html):
+def generate_html(args):
+    # json_file, image_root, output_html):
+    assert args.json_file != None, "missing json_file argument"
+    json_file = args.json_file
+
+    json_name = os.path.splitext(os.path.basename(json_file))[0]
+    json_dir = Path(json_file).resolve().parent
+    print(f"json_name = {json_name}")
     with open(json_file, "r", encoding="utf-8") as f:
         data = json.load(f)
+
+    assert args.image_root != None, "missing image_root argument"
+    image_root = Path(args.image_root).resolve()
+
+    output_html = json_dir / args.output_html if args.output_html else json_dir / (json_name + ".html")
+    html_name = os.path.splitext(os.path.basename(output_html))[0]
+    
+    html_dir = Path(output_html).resolve().parent
+    temp_dir = html_dir / html_name
+    temp_dir.mkdir(exist_ok=True)
 
     html = [
         "<html>",
@@ -49,10 +66,6 @@ def generate_html(json_file, image_root, output_html):
         "<h1>🖼️ Image Captions Viewer</h1>"
     ]
 
-    image_root = Path(image_root).resolve()
-    html_dir = Path(output_html).resolve().parent
-    temp_dir = html_dir / "__converted_images__"
-    temp_dir.mkdir(exist_ok=True)
 
     for item in data:
         orig_path = (image_root / item["image_path"]).resolve()
@@ -100,7 +113,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate an HTML file to visualize image captions.")
     parser.add_argument("--json-file", type=str, required=True, help="Path to JSON file with image captions.")
     parser.add_argument("--image-root", type=str, required=True, help="Root directory for image paths.")
-    parser.add_argument("--output-html", type=str, default="captions.html", help="Output HTML file path.")
+    parser.add_argument("--output-html", type=str, default = None, help="Output HTML file path.")
     args = parser.parse_args()
 
-    generate_html(args.json_file, args.image_root, args.output_html)
+    generate_html(args)

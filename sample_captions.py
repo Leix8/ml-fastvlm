@@ -45,6 +45,8 @@ def caption_directory(args):
     conv_template.append_message(conv_template.roles[0], qs)
     conv_template.append_message(conv_template.roles[1], None)
     prompt = conv_template.get_prompt()
+    print(f"check prompt:{prompt}")
+
     input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).to(device)
 
     # Enumerate image files recursively
