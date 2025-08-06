@@ -61,16 +61,17 @@ def pytorch_predict(args):
 
         image_tensor = image_processor(image, return_tensors='pt')['pixel_values'].to(device)
         with torch.no_grad():
-            outputs = vision_tower(image_tensor)
-            all_embeddings = outputs.squeeze(0)
-            print(f"check outputs shape: {outputs.shape}")
+            output = vision_tower(image_tensor)
+            all_embeddings = output.squeeze(0)
+            print(f"check output type: {type(output),} shape: {output.shape}")
             all_embeddings_list = all_embeddings.cpu().tolist()
             embeddings_dict[image_path] = all_embeddings_list
 
     json_filename = f"{model_name}_on_{image_dir_name}_pytorch.json"
-    with open(os.path.join("vision_encoder", json_filename), "w") as f:
+    json_path = os.path.join("vision_encoder", json_filename)
+    with open(json_path, "w") as f:
         json.dump(embeddings_dict, f)
-        print(f"image embedding json file has been saved to: {json_filename}")
+        print(f"image embedding json file has been saved to: {json_path}")
 
 def get_onnx_model_path(pth_model_path):
     base_path, _ = os.path.splitext(pth_model_path)
@@ -127,8 +128,9 @@ def onnx_predict(args):
         # image_tensor = image_processor(image, return_tensors='pt')['pixel_values'].to(device) # [1, 3, H, W]
         image_numpy = image_tensor.numpy()
         output = session.run(None, {input_name: image_numpy})[0]  # output: [1, N, D] or [1, D, H, W]
+        output = torch.tensor(output)
         # output = output.squeeze(0)  # [N, D] or [D, H, W]
-        print(f"check outputs shape: {output.shape}")
+        print(f"check output type: {type(output),} shape: {output.shape}")
         embeddings_dict[image_path] = output.tolist()
         # with torch.no_grad():
         #     outputs = vision_tower(image_tensor)
@@ -138,9 +140,10 @@ def onnx_predict(args):
         #     embeddings_dict[image_path] = all_embeddings_list
 
     json_filename = f"{model_name}_on_{image_dir_name}_onnx.json"
-    with open(os.path.join("vision_encoder", json_filename), "w") as f:
+    json_path = os.path.join("vision_encoder", json_filename)
+    with open(json_path, "w") as f:
         json.dump(embeddings_dict, f)
-        print(f"image embedding json file has been saved to: {json_filename}")
+        print(f"image embedding json file has been saved to: {json_path}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
