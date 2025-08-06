@@ -62,8 +62,8 @@ def pytorch_predict(args):
         image_tensor = image_processor(image, return_tensors='pt')['pixel_values'].to(device)
         with torch.no_grad():
             outputs = vision_tower(image_tensor)
-            print(f"check outputs shape: {outputs.shape}")
             all_embeddings = outputs.squeeze(0)
+            print(f"check outputs shape: {outputs.shape}")
             all_embeddings_list = all_embeddings.cpu().tolist()
             embeddings_dict[image_path] = all_embeddings_list
 
@@ -127,7 +127,8 @@ def onnx_predict(args):
         # image_tensor = image_processor(image, return_tensors='pt')['pixel_values'].to(device) # [1, 3, H, W]
         image_numpy = image_tensor.numpy()
         output = session.run(None, {input_name: image_numpy})[0]  # output: [1, N, D] or [1, D, H, W]
-        output = output.squeeze(0)  # [N, D] or [D, H, W]
+        # output = output.squeeze(0)  # [N, D] or [D, H, W]
+        print(f"check outputs shape: {output.shape}")
         embeddings_dict[image_path] = output.tolist()
         # with torch.no_grad():
         #     outputs = vision_tower(image_tensor)
@@ -156,4 +157,4 @@ if __name__ == "__main__":
     if args.run_onnx:
         onnx_predict(args)
     else:
-        pytroch_predict(args)
+        pytorch_predict(args)
