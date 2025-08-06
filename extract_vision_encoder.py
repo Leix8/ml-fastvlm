@@ -30,7 +30,6 @@ class VisionEncoderWrapper(torch.nn.Module):
     def __init__(self, vision_encoder):
         super().__init__()
         self.vision_encoder = vision_encoder
-
     def forward(self, x):
         return self.vision_encoder(x)
 
@@ -39,13 +38,12 @@ def save_model(encoder, save_dir = "vision_encoder", model_name = "fastvithd", s
     os.makedirs(save_dir, exist_ok = True)
 
     pytorch_encoder_name = model_name + "_encoder.pth"
-    torch.save(encoder.state_dict(), f"{save_dir}/{pytorch_encoder_name}")
-    print(f"Pytorch weights saved to {save_dir}/{pytorch_encoder_name}")
+    torch.save(encoder, f"{save_dir}/{pytorch_encoder_name}")  # ✅ Save full model
+    print(f"Pytorch model saved to {save_dir}/{pytorch_encoder_name}")
 
     if save_onnx:
         dtype = next(encoder.parameters()).dtype
         device = next(encoder.parameters()).device
-        # llava-fastvithd_0.5b_stage3: image_processor.crop_size = (1024, 1024)
         dummy_input = torch.randn(1, 3, 1024, 1024, dtype=dtype).to(device)
         onnx_encoder_name = model_name + "_encoder.onnx"
         onnx_path = f"{save_dir}/{onnx_encoder_name}"
@@ -76,7 +74,8 @@ if __name__ == "__main__":
 
     model = load_fastvlm_model(args.model_path)
     # print(f"check vision tower: {dir(model.get_vision_tower()), model.get_vision_tower().input_image_size}")
-    vision_encoder = model.get_vision_tower().vision_tower
+    # vision_encoder = model.get_vision_tower().vision_tower
+    vision_encoder  = model.get_vision_tower()
     print(f"check type of vision_encoder: {type(vision_encoder)}")
     encoder_wrapper = VisionEncoderWrapper(vision_encoder)
 
