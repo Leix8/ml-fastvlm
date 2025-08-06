@@ -46,7 +46,7 @@ def save_model(encoder, save_dir = "vision_encoder", model_name = "fastvithd", s
     if save_onnx:
         dtype = next(encoder.parameters()).dtype
         device = next(encoder.parameters()).device
-        dummy_input = torch.randn(1, 3, 1024, 1024, dtype=dtype).to(device)
+        dummy_input = torch.randn(1, 3, 1024, 1024, dtype=torch.float32).to(device)
         onnx_encoder_name = model_name + "_encoder.onnx"
         onnx_path = f"{save_dir}/{onnx_encoder_name}"
         torch.onnx.export(
