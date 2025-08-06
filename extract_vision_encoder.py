@@ -6,6 +6,8 @@ from llava.mm_utils import get_model_name_from_path
 from llava.utils import disable_torch_init
 import onnx 
 
+from vision_encoder_wrapper import VisionEncoderWrapper
+
 # load FastVLM model
 def load_fastvlm_model(raw_path: str):
     # from transformers import AutoModel
@@ -26,12 +28,12 @@ def load_fastvlm_model(raw_path: str):
     return model
 
 # extract vision encoder
-class VisionEncoderWrapper(torch.nn.Module):
-    def __init__(self, vision_encoder):
-        super().__init__()
-        self.vision_encoder = vision_encoder
-    def forward(self, x):
-        return self.vision_encoder(x)
+# class VisionEncoderWrapper(torch.nn.Module):
+#     def __init__(self, vision_encoder):
+#         super().__init__()
+#         self.vision_encoder = vision_encoder
+#     def forward(self, x):
+#         return self.vision_encoder(x)
 
 # save as .pth and onnx
 def save_model(encoder, save_dir = "vision_encoder", model_name = "fastvithd", save_onnx = False):

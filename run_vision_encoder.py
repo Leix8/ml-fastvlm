@@ -1,14 +1,17 @@
 
 import os
 import argparse
+import json
 
 import torch
 import torch.serialization
 
 from PIL import Image
-from extract_vision_encoder import VisionEncoderWrapper
-torch.serialization.add_safe_globals({VisionEncoderWrapper: VisionEncoderWrapper})
-
+from vision_encoder_wrapper import VisionEncoderWrapper
+from pathlib import Path
+from tqdm import tqdm
+# torch.serialization.add_safe_globals([VisionEncoderWrapper])
+# torch.serialization.add_safe_globals([MobileCLIPVisionTower])
 # from llava.utils import disable_torch_init
 # from llava.conversation import conv_templates
 # from llava.model.builder import load_pretrained_model
@@ -21,9 +24,10 @@ def is_image_file(filename):
 
 def predict(args):
     model_path = os.path.expanduser(args.model_path)
+    model_name= os.path.splitext(os.path.basename(model_path))[0]  # "llava-fastvithd_0.5b_stage3_encoder"
     print(f"get model_path: {model_path}")
 
-    vision_encoder_wrapper = torch.load(model_path)
+    vision_encoder_wrapper = torch.load(model_path, weights_only=False)
     vision_encoder_wrapper.eval()
 
     vision_encoder = vision_encoder_wrapper.vision_encoder
@@ -34,6 +38,7 @@ def predict(args):
 
     image_dir = os.path.abspath(os.path.expanduser(args.image_dir))
     print(f"get image dir: {image_dir}")
+    image_dir_name = os.path.basename(os.path.normpath(image_dir))  # "test"
 
     image_paths = []
     for root, _, files in os.walk(image_dir):
@@ -54,12 +59,15 @@ def predict(args):
         image_tensor = image_processor(image, return_tensors='pt')['pixel_values'].to(device)
         with torch.no_grad():
             outputs = vision_tower(image_tensor)
-            all_embeddings = outputs.last_hidden_state.squeeze(0)
+            print(f"check outputs shape: {outputs.shape}")
+            all_embeddings = outputs.squeeze(0)
             all_embeddings_list = all_embeddings.cpu().tolist()
             embeddings_dict[image_path] = all_embeddings_list
 
-    with open("image_patch_embeddings.json", "w") as f:
+    json_filename = f"{model_name}_on_{image_dir_name}.json"
+    with open(os.path.join("vision_encoder", json_filename), "w") as f:
         json.dump(embeddings_dict, f)
+        print(f"image embedding json file has been saved to: {json_filename}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
