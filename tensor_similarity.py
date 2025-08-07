@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 from PIL import Image
+import matplotlib.ticker as mticker
 
 
 def find_closest_square_factors(n):
@@ -26,15 +27,20 @@ def compute_similarity(tensor1: torch.Tensor, tensor2: torch.Tensor):
     # tensor1_normed = torch.nn.functional.normalize(tensor1, dim=1)
     # tensor2_normed = torch.nn.functional.normalize(tensor2, dim=1)
     # l2_dist = torch.norm(tensor1_normed - tensor2_normed, dim=1)
-    
+
+    #l2 norm, cannot eval diff relavant to value range, using normed diff instead
     l2_dist = torch.norm(tensor1 - tensor2, dim=1)  # → [H, ]
     l2_dist[l2_dist < 1e-6] = 0.0  # Optional cleanup for small value instability
+
+    #Gives a percentage difference in magnitude. 0 → same magnitude, higher = bigger scale mismatch.
+    scale_diff = (tensor1.norm(dim=1) - tensor2.norm(dim=1)).abs() / ((tensor1.norm(dim=1) + tensor2.norm(dim=1)) / 2)
 
     H, W = find_closest_square_factors(cos_sim.shape[0])
     cos_sim = cos_sim.view(H, W)
     l2_dist = l2_dist.view(H, W)
+    scale_diff = scale_diff.view(H, W)
 
-    return cos_sim.cpu().numpy(), l2_dist.cpu().numpy()
+    return cos_sim.cpu().numpy(), l2_dist.cpu().numpy(), scale_diff.cpu().numpy()
 
 def reshape_to_image_grid(tensor_2d: np.ndarray, image_aspect_ratio: tuple[int, int]):
     """
@@ -123,8 +129,12 @@ def visualize_and_save(cos_sim, l2_dist, image_path=None, output_path="feature_d
         plt.colorbar(im1, ax=axs[1], fraction=0.046, pad=0.04)
 
         im2 = axs[2].imshow(l2_dist, cmap='hot')
-        axs[2].set_title("L2 Distance")
-        plt.colorbar(im2, ax=axs[2], fraction=0.046, pad=0.04)
+        axs[2].set_title("Magnitude Difference")
+        cbar = plt.colorbar(im2, ax=axs[2], fraction=0.046, pad=0.04)
+        # Format the labels as percentages
+        cbar.ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1.0))
+        # Optional: label
+        cbar.set_label("Magnitude Diff (%)")
 
     else:
         # Only show similarity and distance maps
@@ -134,9 +144,13 @@ def visualize_and_save(cos_sim, l2_dist, image_path=None, output_path="feature_d
         axs[0].set_title("Cosine Similarity")
         plt.colorbar(im1, ax=axs[0], fraction=0.046, pad=0.04)
 
-        im2 = axs[1].imshow(l2_dist, cmap='hot')
-        axs[1].set_title("L2 Distance")
-        plt.colorbar(im2, ax=axs[1], fraction=0.046, pad=0.04)
+        im2 = axs[2].imshow(l2_dist, cmap='hot')
+        axs[2].set_title("Magnitude Difference")
+        cbar = plt.colorbar(im2, ax=axs[2], fraction=0.046, pad=0.04)
+        # Format the labels as percentages
+        cbar.ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1.0))
+        # Optional: label
+        cbar.set_label("Magnitude Diff (%)")
 
     plt.tight_layout()
     plt.savefig(output_path)
