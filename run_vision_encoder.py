@@ -63,7 +63,7 @@ def pytorch_predict(args):
         with torch.no_grad():
             output = vision_tower(image_tensor)
             all_embeddings = output.squeeze(0)
-            print(f"check output type: {type(output),} shape: {output.shape}")
+            print(f"check output type: {type(all_embeddings),} shape: {all_embeddings.shape}")
             all_embeddings_list = all_embeddings.cpu().tolist()
             embeddings_dict[image_path] = all_embeddings_list
 
@@ -129,7 +129,7 @@ def onnx_predict(args):
         image_numpy = image_tensor.numpy()
         output = session.run(None, {input_name: image_numpy})[0]  # output: [1, N, D] or [1, D, H, W]
         output = torch.tensor(output)
-        # output = output.squeeze(0)  # [N, D] or [D, H, W]
+        output = output.squeeze(0)  # [N, D] or [D, H, W]
         print(f"check output type: {type(output),} shape: {output.shape}")
         embeddings_dict[image_path] = output.tolist()
         # with torch.no_grad():

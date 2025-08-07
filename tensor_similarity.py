@@ -3,15 +3,34 @@ import argparse
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import math
+
+def find_closest_square_factors(n):
+    # Start from sqrt(n) and go down to find integer factor
+    sqrt_n = int(math.sqrt(n))
+    for i in range(sqrt_n, 0, -1):
+        if n % i == 0:
+            return i, n // i  # H, W
+    return 1, n  # fallback
 
 def compute_similarity(tensor1: torch.Tensor, tensor2: torch.Tensor):
     assert tensor1.shape == tensor2.shape, f"tensor1.shape={tensor1.shape}, tensor2.shape={tensor2.shape}, Tensors must have the same shape"
     
     # Cosine similarity across channel dimension
-    cos_sim = torch.nn.functional.cosine_similarity(tensor1, tensor2, dim=0)  # → [H, W]
+    cos_sim = torch.nn.functional.cosine_similarity(tensor1, tensor2, dim=1)  # → [H, ]
 
     # Euclidean distance across channels
-    l2_dist = torch.norm(tensor1 - tensor2, dim=0)  # → [H, W]
+    # normalize
+    # tensor1_normed = torch.nn.functional.normalize(tensor1, dim=1)
+    # tensor2_normed = torch.nn.functional.normalize(tensor2, dim=1)
+    # l2_dist = torch.norm(tensor1_normed - tensor2_normed, dim=1)
+    
+    l2_dist = torch.norm(tensor1 - tensor2, dim=1)  # → [H, ]
+    l2_dist[l2_dist < 1e-6] = 0.0  # Optional cleanup for small value instability
+
+    H, W = find_closest_square_factors(cos_sim.shape[0])
+    cos_sim = cos_sim.view(H, W)
+    l2_dist = l2_dist.view(H, W)
 
     return cos_sim.cpu().numpy(), l2_dist.cpu().numpy()
 
