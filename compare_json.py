@@ -29,5 +29,5 @@ if __name__ == "__main__":
             tensor1 = torch.tensor(list1)
             tensor2 = torch.tensor(json2[image_path])
             cos_sim, l2_dist = compute_similarity(tensor1, tensor2)
-            visualize_and_save(cos_sim, l2_dist, os.path.join(args.output_dir, base_name))
+            visualize_and_save(cos_sim, l2_dist, image_path = image_path, output_path = os.path.join(args.output_dir, base_name))
             

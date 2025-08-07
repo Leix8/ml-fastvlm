@@ -4,6 +4,8 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from PIL import Image
+
 
 def find_closest_square_factors(n):
     # Start from sqrt(n) and go down to find integer factor
@@ -69,9 +71,15 @@ def reshape_to_image_grid(tensor_2d: np.ndarray, image_aspect_ratio: tuple[int, 
     grid = flat.reshape(h, w)
     return grid
 
-def visualize_and_save(cos_sim, l2_dist, output_path="feature_diff_combined.png"):
+def visualize_and_save(cos_sim, l2_dist, image_path=None, output_path="feature_diff_combined.png"):
     """
-    Accepts PyTorch tensors or NumPy arrays and saves side-by-side heatmaps.
+    Visualize similarity and distance heatmaps, optionally alongside the original image.
+
+    Parameters:
+    - cos_sim: Cosine similarity tensor or array (H, W)
+    - l2_dist: L2 distance tensor or array (H, W)
+    - image_path: Optional path to image (for visualization)
+    - output_path: Path to save the combined plot
     """
 
     # Convert tensors to numpy if needed
@@ -86,27 +94,49 @@ def visualize_and_save(cos_sim, l2_dist, output_path="feature_diff_combined.png"
     if l2_dist.ndim == 3 and l2_dist.shape[0] == 1:
         l2_dist = l2_dist.squeeze(0)
 
-    # If still 1D or 3D, reduce to 2D by mean or reshape
+    # If still 1D or 3D, reduce to 2D
     if cos_sim.ndim == 1:
         cos_sim = cos_sim.reshape(1, -1)
     elif cos_sim.ndim == 3:
-        cos_sim = cos_sim.mean(axis=-1)  # or axis=0 depending on the context
+        cos_sim = cos_sim.mean(axis=-1)
 
     if l2_dist.ndim == 1:
         l2_dist = l2_dist.reshape(1, -1)
     elif l2_dist.ndim == 3:
-        l2_dist = l2_dist.mean(axis=-1)  # or axis=0 depending on the context
+        l2_dist = l2_dist.mean(axis=-1)
 
-    # Plot
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    # Prepare figure layout
+    if image_path is not None:
+        # Load and resize image
+        img = Image.open(image_path).convert("RGB")
+        # img_resized = img.resize((cos_sim.shape[1], cos_sim.shape[0]))
+        img_array = np.array(img)
 
-    im0 = axs[0].imshow(cos_sim, cmap='viridis', vmin=-1, vmax=1)
-    axs[0].set_title("Cosine Similarity")
-    plt.colorbar(im0, ax=axs[0], fraction=0.046, pad=0.04)
+        fig, axs = plt.subplots(1, 3, figsize=(18, 6))
 
-    im1 = axs[1].imshow(l2_dist, cmap='hot')
-    axs[1].set_title("L2 Distance")
-    plt.colorbar(im1, ax=axs[1], fraction=0.046, pad=0.04)
+        axs[0].imshow(img_array)
+        axs[0].set_title("Original Image")
+        axs[0].axis("off")
+
+        im1 = axs[1].imshow(cos_sim, cmap='viridis', vmin=-1, vmax=1)
+        axs[1].set_title("Cosine Similarity")
+        plt.colorbar(im1, ax=axs[1], fraction=0.046, pad=0.04)
+
+        im2 = axs[2].imshow(l2_dist, cmap='hot')
+        axs[2].set_title("L2 Distance")
+        plt.colorbar(im2, ax=axs[2], fraction=0.046, pad=0.04)
+
+    else:
+        # Only show similarity and distance maps
+        fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+
+        im1 = axs[0].imshow(cos_sim, cmap='viridis', vmin=-1, vmax=1)
+        axs[0].set_title("Cosine Similarity")
+        plt.colorbar(im1, ax=axs[0], fraction=0.046, pad=0.04)
+
+        im2 = axs[1].imshow(l2_dist, cmap='hot')
+        axs[1].set_title("L2 Distance")
+        plt.colorbar(im2, ax=axs[1], fraction=0.046, pad=0.04)
 
     plt.tight_layout()
     plt.savefig(output_path)
