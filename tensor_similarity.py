@@ -77,7 +77,7 @@ def reshape_to_image_grid(tensor_2d: np.ndarray, image_aspect_ratio: tuple[int, 
     grid = flat.reshape(h, w)
     return grid
 
-def visualize_and_save(cos_sim, l2_dist, image_path=None, output_path="feature_diff_combined.png"):
+def visualize_and_save(cos_sim = None, l2_dist = None, scale_diff = None, image_path=None, output_path="feature_diff_combined.png"):
     """
     Visualize similarity and distance heatmaps, optionally alongside the original image.
 
@@ -88,29 +88,11 @@ def visualize_and_save(cos_sim, l2_dist, image_path=None, output_path="feature_d
     - output_path: Path to save the combined plot
     """
 
-    # Convert tensors to numpy if needed
-    if isinstance(cos_sim, torch.Tensor):
-        cos_sim = cos_sim.detach().cpu().numpy()
-    if isinstance(l2_dist, torch.Tensor):
-        l2_dist = l2_dist.detach().cpu().numpy()
-
-    # Remove batch dimension if present: (1, H, W) -> (H, W)
-    if cos_sim.ndim == 3 and cos_sim.shape[0] == 1:
-        cos_sim = cos_sim.squeeze(0)
-    if l2_dist.ndim == 3 and l2_dist.shape[0] == 1:
-        l2_dist = l2_dist.squeeze(0)
-
-    # If still 1D or 3D, reduce to 2D
-    if cos_sim.ndim == 1:
-        cos_sim = cos_sim.reshape(1, -1)
-    elif cos_sim.ndim == 3:
-        cos_sim = cos_sim.mean(axis=-1)
-
-    if l2_dist.ndim == 1:
-        l2_dist = l2_dist.reshape(1, -1)
-    elif l2_dist.ndim == 3:
-        l2_dist = l2_dist.mean(axis=-1)
-
+    fig_cnt = sum(x is not None for x in (image_path, cos_sim, l2_dist, scale_diff))
+    fig_cnt = max(fig_cnt, 2) #supress error if only plot for one axs
+    fig, axs = plt.subplots(1, fig_cnt, figsize=(6 * fig_cnt, 6))
+    
+    counter = 0        
     # Prepare figure layout
     if image_path is not None:
         # Load and resize image
@@ -118,35 +100,57 @@ def visualize_and_save(cos_sim, l2_dist, image_path=None, output_path="feature_d
         # img_resized = img.resize((cos_sim.shape[1], cos_sim.shape[0]))
         img_array = np.array(img)
 
-        fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+        axs[counter].imshow(img_array)
+        axs[counter].set_title("Original Image")
+        axs[counter].axis("off")
+        counter += 1
 
-        axs[0].imshow(img_array)
-        axs[0].set_title("Original Image")
-        axs[0].axis("off")
+    if cos_sim is not None:
+        # Convert tensors to numpy if needed
+        if isinstance(cos_sim, torch.Tensor):
+            cos_sim = cos_sim.detach().cpu().numpy()
+        if cos_sim.ndim == 3 and cos_sim.shape[0] == 1:
+            cos_sim = cos_sim.squeeze(0)
+        # If still 1D or 3D, reduce to 2D
+        if cos_sim.ndim == 1:
+            cos_sim = cos_sim.reshape(1, -1)
+        elif cos_sim.ndim == 3:
+            cos_sim = cos_sim.mean(axis=-1)
 
-        im1 = axs[1].imshow(cos_sim, cmap='viridis', vmin=-1, vmax=1)
-        axs[1].set_title("Cosine Similarity")
-        plt.colorbar(im1, ax=axs[1], fraction=0.046, pad=0.04)
+        im1 = axs[counter].imshow(cos_sim, cmap='viridis', vmin=-1, vmax=1)
+        axs[counter].set_title("Cosine Similarity")
+        plt.colorbar(im1, ax=axs[counter], fraction=0.046, pad=0.04)
+        counter += 1
 
-        im2 = axs[2].imshow(l2_dist, cmap='hot')
-        axs[2].set_title("Magnitude Difference")
-        cbar = plt.colorbar(im2, ax=axs[2], fraction=0.046, pad=0.04)
-        # Format the labels as percentages
-        cbar.ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1.0))
-        # Optional: label
-        cbar.set_label("Magnitude Diff (%)")
+    if l2_dist is not None:
+        if isinstance(l2_dist, torch.Tensor):
+            l2_dist = l2_dist.detach().cpu().numpy()
+        if l2_dist.ndim == 3 and l2_dist.shape[0] == 1:
+            l2_dist = l2_dist.squeeze(0)
+        if l2_dist.ndim == 1:
+            l2_dist = l2_dist.reshape(1, -1)
+        elif l2_dist.ndim == 3:
+            l2_dist = l2_dist.mean(axis=-1)
 
-    else:
-        # Only show similarity and distance maps
-        fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+        im2 = axs[counter].imshow(l2_dist, cmap='hot')
+        axs[counter].set_title("l2 distance")
+        plt.colorbar(im2, ax=axs[counter], fraction=0.046, pad=0.04)
+        counter += 1
 
-        im1 = axs[0].imshow(cos_sim, cmap='viridis', vmin=-1, vmax=1)
-        axs[0].set_title("Cosine Similarity")
-        plt.colorbar(im1, ax=axs[0], fraction=0.046, pad=0.04)
+    if scale_diff is not None:
+        if isinstance(scale_diff, torch.Tensor):
+            scale_diff = scale_diff.detach().cpu().numpy()
+        # Remove batch dimension if present: (1, H, W) -> (H, W)
+        if scale_diff.ndim == 3 and scale_diff.shape[0] == 1:
+            scale_diff = scale_diff.squeeze(0)
+        if scale_diff.ndim == 1:
+            scale_diff = scale_diff.reshape(1, -1)
+        elif scale_diff.ndim == 3:
+            scale_diff = scale_diff.mean(axis=-1)
 
-        im2 = axs[2].imshow(l2_dist, cmap='hot')
-        axs[2].set_title("Magnitude Difference")
-        cbar = plt.colorbar(im2, ax=axs[2], fraction=0.046, pad=0.04)
+        im3 = axs[counter].imshow(scale_diff, cmap='hot')
+        axs[counter].set_title("Magnitude Diff %")
+        cbar = plt.colorbar(im3, ax=axs[counter], fraction=0.046, pad=0.04)
         # Format the labels as percentages
         cbar.ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1.0))
         # Optional: label
