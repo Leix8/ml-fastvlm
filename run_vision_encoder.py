@@ -116,6 +116,9 @@ def onnx_predict(args):
                 image_paths.append(image_path)
 
     embeddings_dict = {}
+    raw_list_path = os.path.join("vision_encoder", "raws", "input_list.txt")
+    if not args.skip_dump_raw:
+        open(raw_list_path, "w").close()
 
     for image_path in tqdm(image_paths, desc="Processing images"):
         try:
@@ -127,7 +130,18 @@ def onnx_predict(args):
 
         # image_tensor = image_processor(image, return_tensors='pt')['pixel_values'].to(device) # [1, 3, H, W]
         image_numpy = image_tensor.numpy()
-        output = session.run(None, {input_name: image_numpy})[0]  # output: [1, N, D] or [1, D, H, W]
+
+        if not args.skip_dump_raw:
+            image_basename =  os.path.splitext(os.path.basename(image_path))[0] # corgi
+            image_numpy_bhwc = np.transpose(image_numpy, (0, 2, 3, 1)).astype(np.float32) # output: [1, H, W, C] 
+            print(f"check array shape: {image_numpy_bhwc.shape}, array type: {image_numpy_bhwc.dtype}, array range: {image_numpy_bhwc.min()} ~ {image_numpy_bhwc.max()}") # output: [1, C, H, W]
+            raw_base_path = image_basename + ".raw"
+            raw_path = os.path.join("vision_encoder", "raws", raw_base_path)
+            image_numpy_bhwc.tofile(raw_path)
+            with open(raw_list_path, "a") as f:
+                f.write(f"{raw_base_path}\n")
+                
+        output = session.run(None, {input_name: image_numpy})[0]  # output: [1, N, D] or [1, C, H, W]
         output = torch.tensor(output)
         output = output.squeeze(0)  # [N, D] or [D, H, W]
         print(f"check output type: {type(output),} shape: {output.shape}")
@@ -150,14 +164,16 @@ if __name__ == "__main__":
     parser.add_argument("--model_path", type=str, default="./llava-v1.5-13b", help = "pytorch model path, which is needed for consistent image_processor")
     parser.add_argument("--model_base", type=str, default=None)
     parser.add_argument("--image_dir", type=str, default=None, help="location of image file")
-    parser.add_argument("--run_onnx", action = "store_true", help = "if to run on ONNX model")
+    parser.add_argument("--skip_run_onnx", action = "store_true", help = "if to run on ONNX model")
+    parser.add_argument("--skip_dump_raw", action = "store_true", help = "if to dump raw data for snpe/qnn inference")
+
     # parser.add_argument("--prompt", type=str, default="Describe the image.", help="Prompt for VLM.")
     # parser.add_argument("--conv-mode", type=str, default="qwen_2")
     # parser.add_argument("--temperature", type=float, default=0.2)
     # parser.add_argument("--top_p", type=float, default=None)
     # parser.add_argument("--num_beams", type=int, default=1)
     args = parser.parse_args()
-    if args.run_onnx:
+    if not args.skip_run_onnx:
         onnx_predict(args)
     else:
         pytorch_predict(args)
