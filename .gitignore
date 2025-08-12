@@ -144,3 +144,4 @@ checkpoints
 data
 vision_encoder
 results
+video_clipping

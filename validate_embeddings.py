@@ -40,7 +40,7 @@ if __name__ == "__main__":
         with open(args.onnx_linux, "r") as f:
             onnx_linux_json = json.load(f)
         for image_path, onnx_linux_array in onnx_linux_json.items():
-            mode = "onnx_linux_vs_dlc_onnx"
+            mode = "onnx_linux_vs_dlc_linux"
             base_name = os.path.splitext(os.path.basename(image_path))[0] + f"_{mode}.png"
             onnx_linux_tensor = torch.tensor(onnx_linux_array)
 
