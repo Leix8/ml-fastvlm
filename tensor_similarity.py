@@ -77,7 +77,7 @@ def reshape_to_image_grid(tensor_2d: np.ndarray, image_aspect_ratio: tuple[int, 
     grid = flat.reshape(h, w)
     return grid
 
-def visualize_and_save(cos_sim = None, l2_dist = None, scale_diff = None, image_path=None, output_path="feature_diff_combined.png"):
+def visualize_and_save(cos_sim = None, l2_dist = None, scale_diff = None, image_path=None, output_path="feature_diff_combined.png", mode = None):
     """
     Visualize similarity and distance heatmaps, optionally alongside the original image.
 
@@ -156,6 +156,7 @@ def visualize_and_save(cos_sim = None, l2_dist = None, scale_diff = None, image_
         # Optional: label
         cbar.set_label("Magnitude Diff (%)")
 
+    plt.suptitle(mode, fontsize=16)
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
