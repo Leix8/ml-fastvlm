@@ -111,6 +111,8 @@ def visualize_and_save_video(frames, scores, output_video_path, img_size, fps=10
     # yuv420p needs even dimensions
     H -= (H % 2)
     W -= (W % 2)
+    scaling_factor = 10  # pixels per point
+    W_dynamic = min(max(W, len(scores) * scaling_factor), 1920)  # Cap at 1920 px
 
     writer = imageio.get_writer(
         output_video_path,
@@ -118,34 +120,49 @@ def visualize_and_save_video(frames, scores, output_video_path, img_size, fps=10
         codec="libx264",
         pixelformat="yuv420p"
     )
+    n = scores.shape[0]                       # number of frames/points
+
+    # --- Adaptive figure width (inches) ---
+    # Aim for ~80 points per inch; clamp to [10, 28] inches for speed.
+    pts_per_inch = 30.0
+    fig_w = max(30.0, min(50.0, n / pts_per_inch))
+    fig_h = 8.0
 
     try:
         for i, frame in enumerate(frames):
-            fig = plt.figure(figsize=(10, 8), dpi=100)
-            gs = fig.add_gridspec(2, 1, height_ratios=[1, 2])
+            fig = plt.figure(figsize=(10, 10), dpi=100)  # wider when n is large
+            gs = fig.add_gridspec(4, 1, height_ratios=[1, 1, 1, 2])
 
-            metric_names = ["cos_sim", "l2_dist", "scale_diff"]
+            metric_names = ["cos_sim", "l2_mag", "l2_mag_%"]
             metric_colors = ["b", "g", "r"]
 
-            # First metric
+            # # First metric
+            # for idx in range(len(metric_names)):
+            #     ax = fig.add_subplot(gs[idx])
+            #     ax.plot(scores[:, idx], color=metric_colors[idx], label=metric_names[idx])
+            #     ax.set_ylabel(metric_names[idx], color=metric_colors[idx])
+            #     ax.tick_params(axis='y', labelcolor=metric_colors[idx])
+            #     ax.axvline(x=i, color='tomato', linestyle='--', linewidth=1.5)
+            #     ax.legend(loc="upper right")   # <- per-axes legend
+
+            
             ax0 = fig.add_subplot(gs[0])
             ax0.plot(scores[:, 0], color=metric_colors[0], label=metric_names[0])
             ax0.set_ylabel(metric_names[0], color=metric_colors[0])
             ax0.tick_params(axis='y', labelcolor=metric_colors[0])
             ax0.axvline(x=i, color='tomato', linestyle='--', linewidth=1.5)
 
-            # Second metric on right side
-            ax1 = ax0.twinx()
+            ax1 = fig.add_subplot(gs[1])
             ax1.plot(scores[:, 1], color=metric_colors[1], label=metric_names[1])
-            ax1.set_ylabel("", color=metric_colors[1])
+            ax1.set_ylabel(metric_names[1], color=metric_colors[1])
             ax1.tick_params(axis='y', labelcolor=metric_colors[1])
+            ax1.axvline(x=i, color='tomato', linestyle='--', linewidth=1.5)
 
-            # Third metric as another axis (offset right)
-            ax2 = ax0.twinx()
-            ax2.spines["right"].set_position(("outward", 30))
+            ax2 = fig.add_subplot(gs[2])
             ax2.plot(scores[:, 2], color=metric_colors[2], label=metric_names[2])
-            ax2.set_ylabel("magmitude", color=metric_colors[2])
+            ax2.set_ylabel(metric_names[2], color=metric_colors[2])
             ax2.tick_params(axis='y', labelcolor=metric_colors[2])
+            ax2.axvline(x=i, color='tomato', linestyle='--', linewidth=1.5)
 
             # Title and legend
             ax0.set_title(f"Metrics Progression (Frame {i}/{len(frames)-1})")
@@ -161,7 +178,7 @@ def visualize_and_save_video(frames, scores, output_video_path, img_size, fps=10
             lines, labels = zip(*uniq)
 
             # place legend below the plot, horizontal, 3 columns
-            leg = ax0.legend(
+            leg = ax2.legend(
                 lines, labels,
                 loc="upper center",
                 bbox_to_anchor=(0.5, -0.15),   # center below the axes
@@ -175,8 +192,8 @@ def visualize_and_save_video(frames, scores, output_video_path, img_size, fps=10
             plt.subplots_adjust(bottom=0.25)   # tweak as needed
             # or: plt.tight_layout(rect=[0, 0.1, 1, 1])
 
-            fig.subplots_adjust(hspace=0.4)  # 0.4 = more gap, adjust as needed
-            ax3 = fig.add_subplot(gs[1])
+            fig.subplots_adjust(hspace=1)  # 0.4 = more gap, adjust as needed
+            ax3 = fig.add_subplot(gs[3])
             ax3.imshow(np.asarray(frame))
             ax3.axis('off')
 
@@ -188,7 +205,7 @@ def visualize_and_save_video(frames, scores, output_video_path, img_size, fps=10
             img = img[:, :, 1:]  # drop A
 
             # Resize + ensure uint8, even dims
-            img = np.asarray(Image.fromarray(img).resize((W, H), Image.BILINEAR), dtype=np.uint8)
+            img = np.asarray(Image.fromarray(img).resize((W_dynamic, H), Image.BILINEAR), dtype=np.uint8)
 
             writer.append_data(img)  # HxWx3, uint8 RGB
             plt.close(fig)
