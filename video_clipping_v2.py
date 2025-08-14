@@ -90,15 +90,15 @@ def pick_peaks_strongest_first(change, thr, min_dist, refine_win=2):
     taken = sorted(set(taken))
     # keep peaks strictly inside (0, N) if you need that invariant:
     taken = [i for i in taken if 0 < i < N]
-
+    print(f"selected cuts: taken = {taken}")
     return taken
 
 def segment_from_stats(
     stats, 
     fps = 10,
-    weights=(0.5, 0.25, 0.25),
+    weights=(0.5, 0.001, 0.049),
     smooth_win=7,
-    k_thresh=3.0,
+    percetile_thresh=0.85,
     min_clip_sec=2.0
 ):
     """
@@ -129,11 +129,15 @@ def segment_from_stats(
     # 4) fuse
     w0, w1, w2 = weights
     change = w0*z_cos + w1*z_l2 + w2*z_lpct
+    change = robust_z(change)
 
     # 5) adaptive threshold using robust stats
-    c_med = np.median(change)
-    c_mad = np.median(np.abs(change - c_med))
-    thr = c_med + k_thresh * 1.4826 * (c_mad + 1e-9)
+    # c_med = np.median(change)
+    # c_mad = np.median(np.abs(change - c_med))
+    # thr = c_med + k_thresh * 1.4826 * (c_mad + 1e-9)
+    
+    #thr = k_thresh
+    thr = np.quantile(change, percetile_thresh)
 
     # peak picking with minimum distance (in frames)
     min_clip_frames = max(1, int(min_clip_sec * fps))
@@ -405,8 +409,13 @@ def visualize_and_clip_video(frames, scores, clip_stats, output_video_path, img_
             ax3.tick_params(axis='y', labelcolor=metric_colors[3])
             ax3.axvline(x=i, color='tomato', linestyle='--', linewidth=1.5)
 
+            # show clip frames
+            for s, _ in clip_stats["clips_frames"]:
+                ax3.axvline(x=s, color='red', linestyle='--', linewidth=1)
+                ax3.text(s, ax3.get_ylim()[0], "✂️", fontsize=10, ha='center', va='bottom')
             # Title and legend
-            ax0.set_title(f"Metrics Progression (Frame {i}/{len(frames)-1})")
+            basename = os.path.basename(output_video_path)
+            ax0.set_title(f"{basename}\n Metrics Progression (Frame {i}/{len(frames)-1})")
 
             lines, labels = [], []
             for ax in (ax0, ax1, ax2, ax3):
@@ -497,8 +506,20 @@ def process_frame(args):
         stats_array = np.array(stats)
         if args.clip:
             # segment_from_stats -> return {"change_score": change, "threshold": thr, "cuts": cuts, "clips_frames": clips_frames, "clips_seconds": clips_secs,}
-            clip_stats = segment_from_stats(stats)
-            output_path = os.path.join(args.output_dir, d.name + "_clipped.mp4")
+            clip_stats = segment_from_stats(stats, weights = (0.33, 0.33, 0.33))
+            output_path = os.path.join(args.output_dir, d.name + "_composite_clipped.mp4")
+            visualize_and_clip_video(frames, stats_array, clip_stats, output_path, image.size)
+
+            clip_stats = segment_from_stats(stats, weights = (0.99, 0, 0.01))
+            output_path = os.path.join(args.output_dir, d.name + "_cos_clipped.mp4")
+            visualize_and_clip_video(frames, stats_array, clip_stats, output_path, image.size)
+
+            clip_stats = segment_from_stats(stats, weights = (0.01, 0.99, 0))
+            output_path = os.path.join(args.output_dir, d.name + "_l2_norm_clipped.mp4")
+            visualize_and_clip_video(frames, stats_array, clip_stats, output_path, image.size)
+
+            clip_stats = segment_from_stats(stats, weights = (0.01, 0, 0.99))
+            output_path = os.path.join(args.output_dir, d.name + "_scaled_clipped.mp4")
             visualize_and_clip_video(frames, stats_array, clip_stats, output_path, image.size)
         else:
             output_path = os.path.join(args.output_dir, d.name + "_unclipped.mp4")
