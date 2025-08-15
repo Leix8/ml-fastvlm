@@ -415,7 +415,7 @@ def visualize_and_clip_video(frames, scores, clip_stats, output_video_path, img_
                 ax3.text(s, ax3.get_ylim()[0], "✂️", fontsize=10, ha='center', va='bottom')
             # Title and legend
             basename = os.path.basename(output_video_path)
-            ax0.set_title(f"{basename}\n Metrics Progression (Frame {i}/{len(frames)-1})")
+            ax0.set_title(f"{basename}\n\n Metrics Progression (Frame {i}/{len(frames)-1})")
 
             lines, labels = [], []
             for ax in (ax0, ax1, ax2, ax3):
@@ -506,20 +506,20 @@ def process_frame(args):
         stats_array = np.array(stats)
         if args.clip:
             # segment_from_stats -> return {"change_score": change, "threshold": thr, "cuts": cuts, "clips_frames": clips_frames, "clips_seconds": clips_secs,}
-            clip_stats = segment_from_stats(stats, weights = (0.33, 0.33, 0.33))
-            output_path = os.path.join(args.output_dir, d.name + "_composite_clipped.mp4")
+            clip_stats = segment_from_stats(stats, weights = (0.33, 0.33, 0.33), percetile_thresh=0.70, min_clip_sec=0.5)
+            output_path = os.path.join(args.output_dir, d.name + "_composite_narrow_clipped.mp4")
             visualize_and_clip_video(frames, stats_array, clip_stats, output_path, image.size)
 
-            clip_stats = segment_from_stats(stats, weights = (0.99, 0, 0.01))
-            output_path = os.path.join(args.output_dir, d.name + "_cos_clipped.mp4")
+            clip_stats = segment_from_stats(stats, weights = (0.99, 0, 0.01), percetile_thresh=0.70, min_clip_sec=0.5)
+            output_path = os.path.join(args.output_dir, d.name + "_cos_narrow_clipped.mp4")
             visualize_and_clip_video(frames, stats_array, clip_stats, output_path, image.size)
 
-            clip_stats = segment_from_stats(stats, weights = (0.01, 0.99, 0))
-            output_path = os.path.join(args.output_dir, d.name + "_l2_norm_clipped.mp4")
+            clip_stats = segment_from_stats(stats, weights = (0.01, 0.99, 0), percetile_thresh=0.70, min_clip_sec=0.5)
+            output_path = os.path.join(args.output_dir, d.name + "_l2_norm_narrow_clipped.mp4")
             visualize_and_clip_video(frames, stats_array, clip_stats, output_path, image.size)
 
-            clip_stats = segment_from_stats(stats, weights = (0.01, 0, 0.99))
-            output_path = os.path.join(args.output_dir, d.name + "_scaled_clipped.mp4")
+            clip_stats = segment_from_stats(stats, weights = (0.01, 0, 0.99), percetile_thresh=0.70, min_clip_sec=0.5)
+            output_path = os.path.join(args.output_dir, d.name + "_scaled_narrow_clipped.mp4")
             visualize_and_clip_video(frames, stats_array, clip_stats, output_path, image.size)
         else:
             output_path = os.path.join(args.output_dir, d.name + "_unclipped.mp4")
