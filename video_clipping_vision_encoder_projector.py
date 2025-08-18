@@ -467,10 +467,10 @@ def process_frame(args):
     model_name= os.path.splitext(os.path.basename(model_path))[0]  # "llava-fastvithd_0.5b_stage3_encoder"
     print(f"get model_path: {model_path}")
 
-    vision_encoder_wrapper = torch.load(model_path, weights_only=False)
-    vision_encoder_wrapper.eval()
+    vision_encoder_projector_wrapper = torch.load(model_path, weights_only=False)
+    vision_encoder_projector_wrapper.eval()
 
-    vision_encoder = vision_encoder_wrapper.vision_encoder
+    vision_encoder = vision_encoder_projector_wrapper.vision.vision_encoder
     vision_tower = vision_encoder.to("cuda" if torch.cuda.is_available() else "cpu")
     image_processor = vision_encoder.image_processor
 
@@ -490,10 +490,12 @@ def process_frame(args):
             image_tensor = image_processor(image, return_tensors='pt')['pixel_values'].to(device)
             
             with torch.no_grad():
-                output = vision_tower(image_tensor)
-                cur_embedding = output.squeeze(0)
+                visual_tokens, projected_tokens = vision_encoder_projector_wrapper(image_tensor)
+                cur_embedding = projected_tokens
+                # print(f"check embedding: visual embedding = {visual_tokens.shape}, projected embedding = {projected_tokens.shape}")
                 if pre_embedding != None: 
-                    cos_sim, l2_dist, scale_diff = compute_similarity(pre_embedding.reshape(-1, 1), cur_embedding.reshape(-1, 1), dim = 0)
+                    # cos_sim, l2_dist, scale_diff = compute_similarity(pre_embedding.reshape(-1, 1), cur_embedding.reshape(-1, 1), dim = 0)
+                    cos_sim, l2_dist, scale_diff = compute_similarity(pre_embedding, cur_embedding, dim = 1)
                     frame_stat = [
                         float(np.squeeze(cos_sim)),
                         float(np.squeeze(l2_dist)),
@@ -530,11 +532,13 @@ if __name__ == "__main__":
     parser.add_argument("--model_path", type=str, default="./llava-v1.5-13b", help = "pytorch model path, which is needed for consistent image_processor")
     parser.add_argument("--video_dir", type=str, default=None, help="location of image file")
     parser.add_argument("--frame_dir", type=str, default=None, help="location of image file")
-    parser.add_argument("--output_dir", type=str, default="./video_clipping", help="location of image file")
+    parser.add_argument("--output_dir", type=str, default="./video_clipping/projector", help="location of image file")
     parser.add_argument("--clip", action = "store_true", help = "if to execute clipping")
 
     args = parser.parse_args()
     
+    os.makedirs(args.output_dir, exist_ok = True)
+
     if args.video_dir:
         process_video(args)
 
