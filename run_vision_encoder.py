@@ -10,7 +10,7 @@ import onnxruntime as ort
 import numpy as np
 
 from PIL import Image
-from vision_encoder_wrapper import VisionEncoderWrapper
+from module_wrapper import VisionEncoderWrapper
 from pathlib import Path
 from tqdm import tqdm
 # torch.serialization.add_safe_globals([VisionEncoderWrapper])

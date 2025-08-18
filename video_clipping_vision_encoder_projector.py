@@ -14,7 +14,7 @@ import numpy as np
 
 # import cv2
 from PIL import Image
-from vision_encoder_wrapper import VisionEncoderWrapper
+from module_wrapper import VisionEncoderWrapper
 from tensor_similarity import *
 
 def is_image_file(filename):
