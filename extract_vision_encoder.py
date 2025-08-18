@@ -6,7 +6,7 @@ from llava.mm_utils import get_model_name_from_path
 from llava.utils import disable_torch_init
 import onnx 
 
-from vision_encoder_wrapper import VisionEncoderWrapper
+from module_wrapper import VisionEncoderWrapper
 
 # load FastVLM model
 def load_fastvlm_model(raw_path: str):
@@ -36,7 +36,7 @@ def load_fastvlm_model(raw_path: str):
 #         return self.vision_encoder(x)
 
 # save as .pth and onnx
-def save_model(encoder, save_dir = "vision_encoder", model_name = "fastvithd", save_onnx = False):
+def save_model(encoder, save_dir = "vision_encoder/vision_encoder", model_name = "fastvithd", save_onnx = False):
     os.makedirs(save_dir, exist_ok = True)
 
     pytorch_encoder_name = model_name + "_encoder.pth"
@@ -70,9 +70,10 @@ if __name__ == "__main__":
     model_name = os.path.basename(os.path.normpath(args.model_path))
     
     if not args.save_dir:
-        save_dir = os.path.join("vision_encoder", model_name)
+        save_dir = os.path.join(".", model_name)
     else: 
-        save_dir = os.path.join("vision_encoder", args.save_dir)
+        save_dir = os.path.join(".", args.save_dir)
+    os.makedirs(save_dir, exist_ok=True)
 
     model = load_fastvlm_model(args.model_path)
     # print(f"check vision tower: {dir(model.get_vision_tower()), model.get_vision_tower().input_image_size}")
